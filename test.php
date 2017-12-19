@@ -14,3 +14,4 @@ echo '</pre>';
 
 echo('!!!!!!!!');
 //jhtfdhgfjhfgkjh
+//Пашка, ты балбес!
