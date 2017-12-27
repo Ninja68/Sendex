@@ -44,35 +44,13 @@ $placeholders['parameters_token'] = $modx->getOption('vkroulette_groupparam_toke
 
 $output = $modx->getChunk($tplmember, $placeholders);
 
-$q = $modx->newQuery('vkrmembers');
-//printf('<br>начальный запрос - <br>');
-//print_r($q);
-
-$q->limit(1000);
-$t=$q->prepare();
-//printf('<br>подготовленный запрос - <br>');
-//print_r($t);
-
-$q_result=$t->execute();
-//printf('<br>выполненный запрос - <br>');
-//print_r($q_result);
-
-$q_result = $t->fetchall(PDO::FETCH_ASSOC);
-//printf('<br>полученный массив - <br>');
-//$vkroulette->pretty_print($q_result,false);
-
-//// а теперь попробуем получить нашу таблицу через "getCollection"
-//$view_table = $modx->getCollection('vkrmembers');		// ограничить например в 20 строк тут нельзя
-//foreach ($view_table as $res) {
-//	$output .= '<h2>'.$res->get('uid').'</h2>';
-//	$output .= '<p>'.$res->get('first_name').'</p>';
-//	$output .= '<p><small>Дата: '.$res->get('link').'</small></p>';
-//}
 
 // выполним заполнение базы
 $fill_res = array();
 $vkroulette->fillmembers($fill_res);
-$vkroulette->pretty_print($fill_res,false);
+$vkroulette->pretty_print($fill_res,false,'ChekedRepost');
+
+$vkroulette->fillmembers2();
 
 /* by default just return output */
 return '';

@@ -10,6 +10,10 @@ class vkroulette {
 	protected $request;
 	public $initialized = array();
 	public $chunks = array();
+	/* @var object $vk */
+	public $vk;
+	/* @var array $vk_config */
+	public $vk_config;
 
 
 	/**
@@ -41,6 +45,36 @@ class vkroulette {
 
 		$this->modx->addPackage('vkroulette', $this->config['modelPath']);
 		$this->modx->lexicon->load('vkroulette:default');
+
+		// подключаем файл работы с api vk
+		$group_id = $this->modx->getOption('vkroulette_groupparam_id');			// 155335527
+		$post_id = $this->modx->getOption('vkroulette_groupparam_post_id');
+		$alias = $this->modx->uri;
+		$this->vk_config = array(
+			'group_id' 		=> $group_id,				// 155335527
+			'post_id'		=> $post_id,				// 1
+			'app_id'        => $this->modx->getOption('vkroulette_groupparam_app_id'),			// 6226105
+			'api_secret'    => $this->modx->getOption('vkroulette_groupparam_secret_key'),		// 8UuENGyjxrenGWIVBQRj
+			'access_token' 	=> $this->modx->getOption('vkroulette_groupparam_token'),			// be9809dd91736d97ae63f7d2d5e98b0c04ff48a250cdd93f1ebb0c059898a8156c0211dfc9580ca8c83fd
+			'callback_url'  => 'http://'.$_SERVER['SERVER_NAME'].'/'.$alias["alias"],
+			'fields' 		=> 'photo_200,members_count',											// поля для получения инфы о группе
+			'owner_id' 		=> '-'.$group_id,
+			'offset' 		=> 0,
+			'count' 		=> 1000,
+			'type'			=> 'post',
+			'item_id'		=> $post_id,
+			'filter'		=> 'copies',
+			'v' 			=> '5.27',
+		);
+		ini_set('default_charset', 'utf-8');
+		error_reporting(E_ALL);
+
+		// подключаем файлы работы с api vk
+		require_once $this->modx->getOption('base_path') . '/vkroulette/_build/includes/VK.php';
+		require_once $this->modx->getOption('base_path') . '/vkroulette/_build/includes/VKException.php';
+
+		$this->vk = new VK\VK($this->vk_config['app_id'], $this->vk_config['api_secret'], $this->vk_config['access_token']);
+
 	}
 
 
@@ -188,71 +222,82 @@ class vkroulette {
 		// 1) проверка можно ли запускать функцию
 		//if count($vkconf) < 3 return false;
 
-		// 2) определяем текущих участников розыгрыша
-			// подготавливаем переменные
-		$group_id = $this->modx->getOption('vkroulette_groupparam_id');			// 155335527
-		//$post_id = $this->modx->getOption('vkroulette_groupparam_post_id');		// 1
-		$post_id = 1;
-		$alias = $this->modx->uri;
-		$alias = $alias["alias"];
-		$site_url = $_SERVER['SERVER_NAME'];
+//		// 2) определяем текущих участников розыгрыша
+//		// подготавливаем переменные
+//		//$post_id = $this->modx->getOption('vkroulette_groupparam_post_id');		// 1
+//		$post_id = 1;
+//		$alias = $this->modx->uri;
+//		$alias = $alias["alias"];
+//		$site_url = $_SERVER['SERVER_NAME'];
+//		$vk_config = array(
+//			'group_id' 		=> $group_id,				// 155335527
+//			'post_id'		=> $post_id,				// 1
+//			'app_id'        => $this->modx->getOption('vkroulette_groupparam_app_id'),			// 6226105
+//			'api_secret'    => $this->modx->getOption('vkroulette_groupparam_secret_key'),		// 8UuENGyjxrenGWIVBQRj
+//			'access_token' 	=> $this->modx->getOption('vkroulette_groupparam_token'),			// be9809dd91736d97ae63f7d2d5e98b0c04ff48a250cdd93f1ebb0c059898a8156c0211dfc9580ca8c83fd
+//			'callback_url'  => 'http://'.$site_url.'/'.$alias,
+//			'fields' 		=> 'photo_200,members_count',											// поля для получения инфы о группе
+//			'owner_id' 		=> '-'.$group_id,
+//			'offset' 		=> 0,
+//			'count' 		=> 1000,
+//			'type'			=> 'post',
+//			'item_id'		=> $post_id,
+//			'filter'		=> 'copies',
+//			'v' 			=> '5.27',
+//		);
+//		ini_set('default_charset', 'utf-8');
+//		error_reporting(E_ALL);
+//
+//		// подключаем файлы работы с api vk
+//
+//		require_once $this->modx->getOption('base_path') . '/vkroulette/_build/includes/VK.php';
+//		require_once $this->modx->getOption('base_path') . '/vkroulette/_build/includes/VKException.php';
+//
+//		$vk = new VK\VK($vk_config['app_id'], $vk_config['api_secret'], $vk_config['access_token']);
+
+		$group_id = $this->vk_config['group_id'];
 		$total = 0;
-		$vk_config = array(
-			'group_id' 		=> $group_id,				// 155335527
-			'post_id'		=> $post_id,				// 1
-			'app_id'        => $this->modx->getOption('vkroulette_groupparam_app_id'),			// 6226105
-			'api_secret'    => $this->modx->getOption('vkroulette_groupparam_secret_key'),		// 8UuENGyjxrenGWIVBQRj
-			'access_token' 	=> $this->modx->getOption('vkroulette_groupparam_token'),			// be9809dd91736d97ae63f7d2d5e98b0c04ff48a250cdd93f1ebb0c059898a8156c0211dfc9580ca8c83fd
-			'callback_url'  => 'http://'.$site_url.'/'.$alias,
-			'fields' 		=> 'photo_200,members_count',											// поля для получения инфы о группе
-			'owner_id' 		=> '-'.$group_id,
-			'offset' 		=> 0,
-			'v' 			=> '5.27',
-		);
-		ini_set('default_charset', 'utf-8');
-		error_reporting(E_ALL);
-
-			// подключаем файлы работы с api vk
-
-		require_once $this->modx->getOption('base_path') . '/vkroulette/_build/includes/VK.php';
-		require_once $this->modx->getOption('base_path') . '/vkroulette/_build/includes/VKException.php';
-
-		$vk = new VK\VK($vk_config['app_id'], $vk_config['api_secret'], $vk_config['access_token']);
-
-			// получаем информацию о группе
-		$info_group = $vk->api('groups.getById', $vk_config);
+		// получаем информацию о группе
+		$info_group = $this->vk->api('groups.getById', $this->vk_config);
 		if ($info_group['response']) { // проверка на успешный запрос
 //			print_r('<img src="' . $info_group['response'][0]['photo_200'] . '">'); // вывод информации
 //			print_r('<p> Всего участников в группе: '. $info_group['response'][0]['members_count'].'</p>');
 			$total = $info_group['response'][0]['members_count'];
 		}
 
-			// получаем список всех участников группы
+		// получаем список всех участников группы
 		$membersGroups = array();
-		$this->getMembers25k($group_id, $membersGroups, $total, $vk);
+		$this->getMembers25k($group_id, $membersGroups, $total, $this->vk);
 
-			// получаем список людей, сделавших репость записи
-		$users_repost = $vk->api('wall.getReposts', $vk_config);
+		// получаем список людей, сделавших репость записи
+		$users_repost = $this->vk->api('wall.getReposts', $this->vk_config);
 		$users_repost = $users_repost['response']['profiles'];
 
-			// выведем оба списка для визуального сравнения массивов
-		$this->pretty_print($membersGroups,false);
-		$this->pretty_print($users_repost,false);
+		// получаем список людей, сделавших репость записи
+		$users_likes = $this->vk->api('likes.getList', $this->vk_config);
+		$users_likes = $users_likes['response']['items'];
 
-			// выводим список людей сделавших репост и состоящих в группе
+
+		// выведем оба списка для визуального сравнения массивов
+		$this->pretty_print($membersGroups,false,'getMembers');
+		$this->pretty_print($users_repost,false,'getReposts');
+		$this->pretty_print($users_likes,false,'getLikes');
+
+		// выводим список людей сделавших репост и состоящих в группе
 		//print_r($users_repost);
 		//array($new_array);
 		//echo "<ul> Сделало репост:";
-		foreach ($users_repost as $rep_user)
+		$bad_users_repost = array();
+		foreach ($users_likes as $user)
 		{
 			$in_group = "нет";
 
-			if (in_array($rep_user['uid'],$membersGroups)){
+			if (in_array($user,$membersGroups)){
 				$in_group = "да";
-				$fill_res[] = $rep_user;
+				$fill_res[] = $user;
 			}
 			else
-				continue;   // не выводим, если не состоит в группе
+				$bad_users_repost[] = $user;
 			//echo "<tr><td>$rep_user[first_name] $rep_user[last_name]</td><td>$in_group</td>></tr>";
 		}
 		//echo "</ul>";
@@ -272,6 +317,167 @@ class vkroulette {
 		$win_id = mt_rand(0,count($fill_res)-1);
 		//print_r($new_array[$win_id]);
 		print_r ('Наш победитель:<p><h3><a href="https://vk.com/'.$fill_res[$win_id]['screen_name'].'">'.$fill_res[$win_id]['first_name'].' '.$fill_res[$win_id]['last_name'].'</a></h3></p>');
+	}
+
+	/**
+	 * Заполнение таблицы участников текущего конкурса:
+	 *
+	 *
+	 * @return bool
+	 */
+	function fillmembers2(){
+		// на входе массив id пользователей и класс работы с запросами к Вконтакте
+		// считываем текущий список участников сообщества
+		// сравниваем с полученным списком
+		// определяем кого надо добавить
+		// добавляем
+
+
+		// вариант №1 - считываем данные таблицы 'members'
+		$memberscollection = $this->modx->getCollection('vkrmembers');
+		$new_array = array();
+		foreach ($memberscollection as $mmbrcl){
+			$new_array[$mmbrcl->get('uid')] = $mmbrcl->toarray();
+			$mmbrcl->set('signed',true);
+			$mmbrcl->save();
+		}
+		$this->pretty_print($new_array,false, 'Members getCollection');
+
+//		// вариант №2 - считываем данные таблицы 'members'
+//		$q = $this->modx->newQuery('vkrmembers');				// создаём запрос
+//		$q->limit(1000,0);								// задаем параметры
+//		$q->prepare();												// подготавливаем/проверяем на ошибки
+//		$q->stmt->execute();										// исполняем (всё это на сервере наверно)
+//		$res = $q->stmt->fetchAll(PDO::FETCH_ASSOC);		// получаем данные запроса в виде массива
+//		$this->pretty_print($res,false,'Members - fetch_query');
+//
+////		// вариант №3
+////		$sql = 'SELECT * FROM vkroulette_members';
+////		$q = new xPDOCriteria($this->modx, $sql);
+////		$res = $this->modx->getCollection('vkrmembers', $q);
+////		$new_array2 = array();
+////		foreach ($res as $v) {
+////			$new_array[$v->get('uid')] = $v->toarray();
+////		}
+////		$this->pretty_print($new_array2,false, 'Members sql getCollection');
+
+		//
+	}
+
+	function readrecords($class, $offset = 0){
+		//printf('<br>начальный запрос - <br>');
+		$q = $this->modx->newQuery($class);
+		//print_r($q);
+
+		//printf('<br>подготовленный запрос - <br>');
+		$q->limit(1000, $offset);
+		$t=$q->prepare();
+		//print_r($t);
+
+		//printf('<br>выполненный запрос - <br>');
+		$q_result=$t->execute();
+		//print_r($q_result);
+
+		//printf('<br>полученный массив - <br>');
+		$q_result = $t->fetchall(PDO::FETCH_ASSOC);
+		//$vkroulette->pretty_print($q_result,false);
+
+		//// а теперь попробуем получить нашу таблицу через "getCollection"
+		//$view_table = $modx->getCollection('vkrmembers');		// ограничить например в 20 строк тут нельзя
+		//foreach ($view_table as $res) {
+		//	$output .= '<h2>'.$res->get('uid').'</h2>';
+		//	$output .= '<p>'.$res->get('first_name').'</p>';
+		//	$output .= '<p><small>Дата: '.$res->get('link').'</small></p>';
+		//}
+
+		return $q_result;
+	}
+
+	/**
+	 * Сброс таблицы участников текущего конкурса:
+	 *        а именно устанавливаем во все записи в поле 'repost' значение 'false'
+	 *
+	 * @param string $class - имя класса объекта, с которым работаем
+	 * @param string $field - имя изменяемого свойства
+	 * @param bool $value - новое значение изменяемого поля
+	 *
+	 * @return bool
+	 */
+	function resetmembers($class = 'vkrmembers', $field = 'repost', $value = false){
+		// ВАРИАНТ №1 - работаем с объектами по отдельности
+		// считываем все объекты
+		$memberscollection = $this->modx->getCollection($class);
+
+		// запоминаем новое значение
+		$new_value = array(
+			$field => $value
+		,'signed' => false		// если надо еще и данное поле обнулить
+		);
+
+		/** @var modX $mmbrcl */
+		foreach ($memberscollection as $mmbrcl){
+			// изменяем нужное поле
+			$mmbrcl->set('repost',false);		// вручную указываем устанавливаемое поле и его значение
+			$mmbrcl->set('signed',false);
+
+			// или можем вот так изменить
+			$mmbrcl->fromarray($new_value);		// берем имя поля и его значение из массива (можно сразу несколько значений
+
+			// сохраняем элемент
+			$mmbrcl->save();
+		}
+
+		// ВАРИАНТ №2 - или выполним SQL-запрос через PDO
+		//		Update имя_таблица Set имя_колонки = новое_значение Where условие_отбора
+		//	xmpl:	Update vkroulette_members Set repost = false
+		$results = $this->modx->query('Update vkroulette_members Set repost = false');
+
+		// ВАРИАНТ №3 - или выполним SQL-запрос через xPDO
+
+	}
+
+	/**
+	 * Добавление новых участников группы
+	 *
+	 * @param array $new_members
+	 * @param string $class - имя класса объекта, с которым работаем
+	 *
+	 * @return bool
+	 */
+	function addmembers($new_members, $class = 'vkrmembers'){
+		// на входе массив с id-шниками новых членов группы
+		// получаем информацию о пользователях через api vk
+		// добавляем новые записи в таблицу
+
+		// разбиваем наш массив на части по 999 штук, т.к. api vk имеет ограничение в 1000 штук
+		$new_array = array_chunk($new_members, 999, true);
+		$new_members_info = array();
+		foreach ($new_array as $new){
+			// получаем информацию об участниках сообщества
+			$users = $this->vk->api('users.get', array(
+				'user_ids' => $new,
+				'fields' => 'first_name,last_name,screen_name,photo_200',
+				'access_token' => $this->vk_config['access_token']
+			));
+			// записываем всё в объединенный массив
+			$new_members_info = array_merge($new_members_info,$users);
+		}
+
+		// теперь создаём новые объекты
+		// каждый элемент создаём отдельно, заполняя его данные по полученный ранее данным
+		foreach ($new_members_info as $fields) {
+			$new_class = $this->modx->newObject($class, $fields);
+			//$new_class->fromArray($fields);
+			$new_class->save();
+		}
+
+		// или же создаём sql запросом
+		$sql = 'INSERT INTO `Ostatki1s_proba` (`uid`, `first_name`, `last_name`, `screen_name`, `photo`, `link`) VALUES';
+		// указываем и колонки, и значения
+		// добавляем по одной строке
+		foreach ($new_members_info as $new) {
+			$sql_result = $this->modx->exec($sql . '(`' . implode('`, `',$new) . '`,`https://vk.com/id'.$new['uid'] . '`)');
+		}
 	}
 
 	/**
@@ -330,17 +536,18 @@ class vkroulette {
 	 *
 	 * @param mixed $in - Массив или объект, который надо обойти
 	 * @param boolean $opened - Раскрыть дерево элементов по-умолчанию или нет?
+	 * @param string $name - отображаемое имя массива
 	 *
 	 * @return void
 	 */
-	function pretty_print($in,$opened = true){
+	function pretty_print($in,$opened = true, $name = 'Array'){
 		if($opened)
 			$opened = ' open';
 		if(is_object($in) or is_array($in)){
 			echo '<div>';
 			echo '<details'.$opened.'>';
 			echo '<summary>';
-			echo (is_object($in)) ? 'Object {'.count((array)$in).'}':'Array ['.count($in).']';
+			echo (is_object($in)) ? 'Object {'.count((array)$in).'}':$name.' ['.count($in).']';
 			echo '</summary>';
 			$this->pretty_print_rec($in, $opened);
 			echo '</details>';
