@@ -24,15 +24,19 @@ if (empty($tplmember)) {$tplmember = 'tpl.vkroulette.member';}
 
 
 if (!$member = $modx->getObject('vkrmembers',"")) {
-	return $modx->lexicon('vkroulette_member_err_ns');
+	print $modx->lexicon('vkroulette_member_err_ns');
+	//print('какого хрена');
+	//print_r($txt);
 }
-
-$placeholders = $member->toArray();
-$placeholders['name1'] = $name1;
+else{
+// здесь мы конвертируем наш объект (в данном случае таблицу) "vkrmembers" в массив
+	$placeholders = $member->toArray();
+// а далее дополняем этот массив нашими переменными, доступными из свойсв properties "\_build\properties\properties.vkroulette.php"
+	$placeholders['name1'] = $name1;
 //$placeholders['message'] = 'here is the text of the message';
-$placeholders['description'] = 'description here';
-$placeholders['name2'] = 'f***ing name 2';
-$placeholders['parameters_token'] = $modx->getOption('vkroulette_groupparam_token');
+	$placeholders['description'] = 'description here';
+	$placeholders['name2'] = 'f***ing name 2';
+	$placeholders['parameters_token'] = $modx->getOption('vkroulette_groupparam_token');
 
 //$output = !empty($tplmember)
 //	? $pdoTools->getChunk($tplmember, $placeholders)
@@ -42,15 +46,17 @@ $placeholders['parameters_token'] = $modx->getOption('vkroulette_groupparam_toke
 //print_r($output);
 // ----------------------------------
 
-$output = $modx->getChunk($tplmember, $placeholders);
+	$output = $modx->getChunk($tplmember, $placeholders);
+
+}
 
 
 // выполним заполнение базы
 $fill_res = array();
 $vkroulette->fillmembers($fill_res);
-$vkroulette->pretty_print($fill_res,false,'ChekedRepost');
+//$vkroulette->pretty_print($fill_res,false,'ChekedRepost');
 
-$vkroulette->fillmembers2();
+$vkroulette->updatemembers();
 
 /* by default just return output */
 return '';

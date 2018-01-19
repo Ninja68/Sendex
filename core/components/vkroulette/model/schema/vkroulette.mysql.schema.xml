@@ -13,7 +13,8 @@
 		<field key="data" dbtype="date" phptype="date" null="false"/>
 		<field key="summa" dbtype="int" precision="5" phptype="integer" attributes="unsigned" null="false" default=""/>
 		<field key="mmbrscount" dbtype="int" precision="10" phptype="integer" attributes="unsigned" null="false" default=""/>
-		
+		<field key="mmbrsrepost" dbtype="int" precision="10" phptype="integer" attributes="unsigned" null="false" default=""/>
+
         <index alias="uid" name="uid" primary="false" unique="true" type="BTREE">
             <column key="uid" length="" collation="A" null="false"/>
         </index>
@@ -27,10 +28,11 @@
 		<field key="screen_name" dbtype="varchar" precision="30" phptype="string" null="false" default=""/>
 		<field key="photo" dbtype="varchar" precision="100" phptype="string" null="false" default=""/>
 		<field key="link" dbtype="varchar" precision="30" phptype="string" null="false" default=""/>
-		
+
 		<field key="signed" dbtype="tinyint" precision="1" phptype="boolean" attributes="unsigned" null="true" default="0"/>
 		<field key="repost" dbtype="tinyint" precision="1" phptype="boolean" attributes="unsigned" null="true" default="0"/>
-		
+		<field key="manager" dbtype="tinyint" precision="1" phptype="boolean" attributes="unsigned" null="true" default="0"/>
+
         <index alias="uid" name="uid" primary="false" unique="true" type="BTREE">
             <column key="uid" length="" collation="A" null="false"/>
         </index>

@@ -15,6 +15,7 @@ $xpdo_meta_map['vkrwinners']= array (
     'data' => NULL,
     'summa' => 0,
     'mmbrscount' => 0,
+    'mmbrsrepost' => 0,
   ),
   'fieldMeta' => 
   array (
@@ -83,6 +84,15 @@ $xpdo_meta_map['vkrwinners']= array (
       'default' => 0,
     ),
     'mmbrscount' => 
+    array (
+      'dbtype' => 'int',
+      'precision' => '10',
+      'phptype' => 'integer',
+      'attributes' => 'unsigned',
+      'null' => false,
+      'default' => 0,
+    ),
+    'mmbrsrepost' => 
     array (
       'dbtype' => 'int',
       'precision' => '10',

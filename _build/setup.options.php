@@ -8,7 +8,8 @@ switch ($options[xPDOTransport::PACKAGE_ACTION]) {
 	case xPDOTransport::ACTION_INSTALL:
 
 	case xPDOTransport::ACTION_UPGRADE:
-		$exists = $modx->getObject('transport.modTransportPackage', array('package_name' => 'pdoTools'));
+		//$exists = $modx->getObject('transport.modTransportPackage', array('package_name' => 'pdoTools'));
+		$exists = true;
 		break;
 	case xPDOTransport::ACTION_UNINSTALL:
 		break;

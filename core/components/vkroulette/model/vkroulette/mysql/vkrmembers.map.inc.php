@@ -14,6 +14,7 @@ $xpdo_meta_map['vkrmembers']= array (
     'link' => '',
     'signed' => 0,
     'repost' => 0,
+    'manager' => 0,
   ),
   'fieldMeta' => 
   array (
@@ -76,6 +77,15 @@ $xpdo_meta_map['vkrmembers']= array (
       'default' => 0,
     ),
     'repost' => 
+    array (
+      'dbtype' => 'tinyint',
+      'precision' => '1',
+      'phptype' => 'boolean',
+      'attributes' => 'unsigned',
+      'null' => true,
+      'default' => 0,
+    ),
+    'manager' => 
     array (
       'dbtype' => 'tinyint',
       'precision' => '1',

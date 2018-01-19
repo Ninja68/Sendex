@@ -3,6 +3,21 @@
 $settings = array();
 
 $tmp = array(
+	'core_path' => array(
+		'xtype' => 'textfield',
+		'value' => '{base_path}vkroulette/core/components/vkroulette/',
+		'area' => 'vkroulette_main',
+	),
+	'assets_url' => array(
+		'xtype' => 'textfield',
+		'value' => '/vkroulette/assets/components/vkroulette/',
+		'area' => 'vkroulette_main',
+	),
+	'assets_path' => array(
+		'xtype' => 'textfield',
+		'value' => '{base_path}vkroulette/assets/components/vkroulette/',
+		'area' => 'vkroulette_main',
+	),
 	'groupparam_id' => array(
 		'xtype' => 'textfield',
 		'value' => 'input here the ID of vk_group',
