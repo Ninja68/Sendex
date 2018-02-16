@@ -12,6 +12,10 @@ vkroulette.panel.Home = function(config) {
 			,bodyStyle: 'padding: 10px'
 			,defaults: { border: false ,autoHeight: true }
 			,border: true
+            //,stateful: true
+            //,stateId: 'sendex-panel-home'
+            //,stateEvents: ['tabchange']
+            //,getState:function() {return {activeTab:this.items.indexOf(this.getActiveTab())};}
 			,activeItem: 0
 			,hideMode: 'offsets'
 			,items: [{
@@ -25,6 +29,17 @@ vkroulette.panel.Home = function(config) {
 					xtype: 'vkroulette-grid-members'
 					,preventRender: true
 				}]
+			},{
+                title: _('vkroulette_winners')
+                ,items: [{
+                    html: _('vkroulette_winners_intro')
+                    ,border: false
+                    ,bodyCssClass: 'panel-desc'
+                    ,bodyStyle: 'margin-bottom: 10px'
+                },{
+                    xtype: 'vkroulette-grid-winners'
+                    ,preventRender: true
+                }]
 			}]
 		}]
 	});

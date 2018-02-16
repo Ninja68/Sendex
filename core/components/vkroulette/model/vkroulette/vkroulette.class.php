@@ -175,13 +175,13 @@ class vkroulette {
 	 * 		дата и время начала розыгрыша должны соответствовать
 	 * 		в таблице победителей не должно быть текущей даты розыгрыша - "vkroulette_winners"
 	 * 2) считываем таблицу участников текущего конкурса - "vkroulette_members"
-	 * 		(она содержит только текущих участников, т.к. после определения победителя очищается)
+	 * 		(отбираем по всем функциональным полям 'signed', 'repost', 'manager')
 	 * 3) формируем общее пространство диапазонов шансов на победу
-	 *		+ 20% каждому участнику, сделавшему новый репост записи текущего розыгрыша
-	 * 		(колич участников * 100%) + (колич участников * количество бонусов)
+	 *		+ 50% каждому участнику, сделавшему репост записи текущего розыгрыша
+	 * 		(колич участников * 100%) + (размер бонуса * количество бонусов)
 	 * 4) получаем случайное число из нашего пространства на победу
 	 * 5) выявляем нашего победителя из общего пространства
-	 * 		??? ??? ??? НУЖНО ЛИ СОРТИРОВАТЬ ТАБЛИЦУ ??? ??? ???
+	 * 		??? ??? ??? НУЖНО ЛИ СОРТИРОВАТЬ ТАБЛИЦУ ??? ??? ???	- НУЖНО
 	 * 		последовательно увеличиваем диапазон, пока не достигнем нашего победного значения
 	 * 		на ком остановились, тот и победитель
 	 * 6) добавляем нового победителя в таблицу победителей - "vkroulette_winners"
@@ -189,8 +189,119 @@ class vkroulette {
 	 *
 	 * @return bool
 	 */
-	function findwinner(){
+	function findwinner($class = 'vkrmembers'){
+		// 1 определяем наступило ли время розыгрыша
+		//		возможно это определяет скрипт ... а мы просто запускаем эту ф-цию по скрипту
+
+		// 2 получаем всех участников текущего конкурса
+		// создаём запрос
+		$query = $this->modx->newQuery($class);
+		$query->select('uid,repost');				// считываемые поля
+		$query->sortby('uid', 'ASC');		// сортировка
+		// добавляем фильтры по полям 'signed', 'repost', 'manager'
+		$query->where(array(
+			'signed' => true,
+			'manager' => false
+			)
+		);
+		$query->prepare();
+		//print_r('<br>объект запрос = ' . $query);
+		$sql = $query->toSQL();
+		//print_r('<br>SQL = ' . $sql);
+		// считываем значения c нашим критерием - тип критерия xPDOQuery
+		//$players = $this->modx->getCollection($class, $query);
+		//$players = $this->modx->getIterator($class, $query);
+		$players = $this->modx->query($sql);
+
+		// 3 формируем массив диапазонов победы
+		$win_array = array();
+		$range = 0;
+		$mmbrsrepost = 0;
+		$mmbrscount = $players->rowCount();
+		$this->pretty_print($win_array,false, 'empty_win_array');
+		foreach ($players as $player) {
+			// определяем был ли репост
+			if ($player['repost'] == true) {
+				$range += 150;
+				$mmbrsrepost += 1;
+			}
+			else
+				$range += 100;
+			// фиксируем диапазон
+			$win_array[$player['uid']] = $range;
+		}
+		$this->pretty_print($win_array,false, 'win_array');
+
+		// 4 определяем случайное число для определения победителя
+		$win_number = mt_rand(1,$range);
+		//print_r('<br>Случайное число победителя (1, '.$range.') = ' . $win_number);
+		//print_r('<br>Участников конкурса (кроме администрации группы)' . $mmbrscount);
+		//print_r('<br>Из них сделало репост' . $mmbrsrepost);
+
+		// 5 находим победителя
+		foreach ($win_array as $ind => $key)
+			if ($key >= $win_number) break;
+		// получим информацию о победителе
+		//print_r('<br>Последние считанные индекс => ключ : ' . $ind.' => ' . $key);
+		//$winner = $this->readrecords($class,'', array('uid'=>$ind));
+		$winner = $this->modx->getObject($class, array('uid'=>$ind));
+		//print_r('<br>Полученный объект : ' . $winner);
+		/** @var xPDOObject $winner */
+		$fields = $winner->toArray();		// массив свойств текущего победителя - для добавления в таблицу 'vkrwinners'
+		$this->pretty_print($fields, false, 'returned_readrecords');
+
+		// 6 добавляем нового побеителя в таблицу 'vkrwinners'
+		$new_winer = $this->modx->newObject('vkrwinners', $fields);
+		$data = getdate();
+		$data_sql = $data['year'] . '-' . $data['mon'] . '-' . $data['mday'];
+		$addfields = array(
+			//'data' => $data[0],			// сам тайм штамп (timestamp) времени розыгрыша
+			'data' => $data_sql,			// текущее время розыгрыша
+			'summa' => 1000,			// $this->modx->getOption('создать такой параметр')
+			'mmbrscount' => $mmbrscount,
+			'mmbrsrepost' => $mmbrsrepost,
+		);
+		$new_winer->fromArray($addfields);
+		$new_winer->save();
+		$addfields = array_merge($addfields,$fields);
+		$this->pretty_print($addfields,false,'new winner fields');
+
+		// 7 сбрасываем текущие данные конкурса
+		$this->resetmembers_sql();
+		//$this->getlastwinner();
+
 		return true;
+	}
+
+	/**
+	 * Получаем последнего победителя из таблицы
+	 * 		либо сортировать по дате, либо просто последнего, т.к. добавляем в конец таблицы
+	 *
+	 * @param string $class
+	 *
+	 * @return array
+	 */
+	function getlastwinner($class = 'vkrwinners'){
+		$lastwinner = array();
+		$query = $this->modx->newQuery($class);
+		$query->select('uid,first_name,last_name,photo,data,summa,link');
+		$query->sortby('id','DESC');
+		$query->limit(1);
+		$query->prepare();
+		$sql = $query->toSQL();
+		//print_r('<br>SQL = ' . $sql);
+		$winners = $this->modx->query($sql);
+		//$this->pretty_print($winners, false, '$winners');
+		$lastwinner = $winners->fetchAll(PDO::FETCH_ASSOC);
+		$this->pretty_print($lastwinner, false, '$lastwinner fetchAll');
+//		foreach ($winners as $winner)
+//			//$lastwinner = $winner->fetch();
+//			//print_r('<br>$winner = ' . $winner);
+//			$this->pretty_print($winner, false, 'winner foreach');
+//		$lastwinner = $lastwinner[0];
+		$this->pretty_print($lastwinner[0], false, '$lastwinner');
+
+		return $lastwinner[0];
 	}
 
 	/**
@@ -270,8 +381,8 @@ class vkroulette {
 
 // определяем случайного члена группы
 		$win_id = mt_rand(0,count($fill_res)-1);
-		print_r('Случайное число = ' . $win_id);
-		print_r ('<p>Наш победитель: <h3><a href="https://vk.com/id'.$fill_res[$win_id].'">'.$fill_res[$win_id].'</a></h3></p>');
+		//print_r('Случайное число = ' . $win_id);
+		//print_r ('<p>Наш победитель: <h3><a href="https://vk.com/id'.$fill_res[$win_id].'">'.$fill_res[$win_id].'</a></h3></p>');
 	}
 
 	/**
@@ -334,6 +445,8 @@ class vkroulette {
 	 * 3) получаем список участников сообщества
 	 * 4) добавляем новых участников по полученному списку участников
 	 *		отдельной функцией
+	 * 5) получаем список администраторов группы
+	 * 6) помечаем наших администраторов в БД
 	 *
 	 * @param string $class
 	 *
@@ -397,6 +510,28 @@ class vkroulette {
 
 		// 4 добавляем всех пользователей в базу данных
 		$this->addmembers($membersGroups,$class);
+
+		// 5 получаем список администраторов группы
+		$vk_config = array(
+			'group_id' 		=> $group_id,
+			'app_id'        => $this->vk_config['app_id'],
+			'api_secret'    => $this->vk_config['api_secret'],
+			'access_token' 	=> $this->vk_config['access_token'],
+			'filter'		=> 'managers',
+			'v' 			=> '5.27',
+		);
+		$response_admins = $this->vk->api('groups.getMembers',$vk_config);
+		$response_admins = $response_admins['response']['items'];
+		$admins = array();
+		foreach ($response_admins as $ind => $admin) {
+			//$admins .= ((strlen($admins) > 0) ? ',' : '') . $admin['id'];
+			$admins[] = $admin['id'];
+		}
+
+		// 6 помечаем администраторов в БД
+		$change_fields = array('manager' => true);
+		$this->changerecords($class, $admins, $change_fields);
+
 	}	// finished
 
 	/**
@@ -405,6 +540,7 @@ class vkroulette {
 	 * 2) получаем список участников из базы данных
 	 * 3) находим новых пользователей
 	 * 4) добавляем новых участников по полученному списку участников
+	 * 5) изменяем свойство signed в БД, если пользователь отписался
 	 *
 	 * @param string $class
 	 *
@@ -417,7 +553,7 @@ class vkroulette {
 		// проверка на успешный запрос
 		if ($info_group['response']) $total = $info_group['response'][0]['members_count'];
 		else $total = 0;
-		// 3 получаем список всех участников группы
+		// получаем список всех участников группы
 		$membersGroups = array();
 		// если участников группы ноль - значит некого добавлять
 		if ($total == 0) return;
@@ -438,11 +574,74 @@ class vkroulette {
 
 		// 2 получаем список участников из базы данных
 		$fields = 'uid';		// считываемые поля через запятую
-		$members_mysql = $this->readrecords($class, $fields);
-		$members_mysql = $this->readrecords_sql($class, $fields);
+		$members_db = $this->readrecords($class, $fields);
+		//$members_mysql = $this->readrecords_sql($class, $fields);
+
+		// 3 определяем разхождения в участниках
+		// новые участники сообщества, которые только подписались на нашу группу (есть в Вк, нет в ДБ)
+		$members_new = array_diff($membersGroups,$members_db);
+		// участники сообщества, которые отписались от нашей группы (есть в ДБ, нет в ВК)
+		$members_old = array_diff($members_db,$membersGroups);
+		$this->pretty_print($members_new, false,'members_new');
+		$this->pretty_print($members_old, false,'members_old');
 
 		// 4 добавляем всех пользователей в базу данных
-		//$this->addmembers($membersGroups,$class);
+		$this->addmembers($members_new,$class);
+
+		// 5 изменяем отписавшихся
+		$change_fields = array('signed' => false);
+		$this->changerecords($class, $members_old, $change_fields);
+	}
+
+	/**
+	 * Обновление таблицы участников сообщества - перезаполняем свойство 'repost'
+	 * 1) получаем список репостов нашей записи
+	 * 		делаем первый запрос
+	 * 		извлекаем из него общее количество постов
+	 * 		если количество полученных меньше чем общее количество, досчитываем оставшихся
+	 * 2) у полученного списка людей в базе проставляем свойство 'repost' в true
+	 * 		сперва очищаем все репосты
+	 * 			??? ??? ??? нужно ли очищать ??? ??? ??? ведь если хоть 1 раз репост был - люди уже видели ???
+	 * 		затем заново проставляем все репосты
+	 *
+	 * @param string $class
+	 *
+	 * @return void
+	 */
+	function updatemembersreposts($class = 'vkrmembers'){
+		// 1 получаем список людей, сделавших репость записи
+		$vk_config = array(
+			'app_id'        => $this->modx->getOption('vkroulette_groupparam_app_id'),
+			'api_secret'    => $this->modx->getOption('vkroulette_groupparam_secret_key'),
+			'access_token' 	=> $this->modx->getOption('vkroulette_groupparam_token'),
+			'type'			=> 'post',
+			'owner_id' 		=> '-'.$this->modx->getOption('vkroulette_groupparam_id'),
+			'item_id'		=> $this->modx->getOption('vkroulette_groupparam_post_id'),
+			'filter'		=> 'copies',
+			'offset' 		=> 0,
+			'count' 		=> 1000,
+			'v' 			=> '5.27',
+		);
+		$likes_users = array();
+		$likes = $this->vk->api('likes.getList', $vk_config);
+		$likes_count = $likes['response']['count'];
+		$likes_users = array_merge($likes_users,$likes['response']['items']);
+		if ($likes_count > 1000){
+			// значит еще нужно сделать несколько запросов
+			$count = round($likes_count/1000) + 1;
+			for ($i = 1; $i < $count; $i++) {
+				// устанавливаем смещение по пользователям
+				$vk_config['offset'] = $i * 1000;
+				$likes = $this->vk->api('likes.getList', $vk_config);
+				$likes_users = array_merge($likes_users,$likes['response']['items']);
+			}
+		}
+
+		// 2 обновляем список
+		$change_fields = array('repost' => true);
+		// сбрасываем текущие значения репостов
+		//$this->resetmembers_sql();
+		$this->changerecords($class, $likes_users, $change_fields);
 	}
 
 	/**
@@ -450,12 +649,12 @@ class vkroulette {
 	 *
 	 * @param string $class - имя класса считываемой таблицы
 	 * @param string $fields - считываемые поля таблицы через запятую
-	 * @param string $where - полностью прописанный текст условия отбора
+	 * @param array $where - массив полей с отборо
 	 *
 	 * @return array
 	 */
-	function readrecords($class = 'vkrmembers', $fields = '', $where = ''){
-		$memberscollection = $this->modx->getCollection($class);
+	function readrecords($class = 'vkrmembers', $fields = '', $where = array()){
+		$memberscollection = $this->modx->getCollection($class,$where);
 		$new_array = array();
 		$fields_array = explode(',', $fields);
 		$fields_count = count($fields_array);
@@ -466,7 +665,11 @@ class vkroulette {
 			//$mmbrcl->save();
 			if ($fields_count == 1)
 				// считаем только указанное поле в массив без идентификаторов
-				$new_array[] = $mmbrcl->get($fields);
+				if (strlen($fields) == 0)
+					// если строка пустая - то все значения
+					$new_array[] = $mmbrcl->toArray();
+				else
+					$new_array[] = $mmbrcl->get($fields);
 			else {
 				// если указано несколько полей, то создаём вложенный массив с указанными полями
 				$new_array_element = array();
@@ -496,7 +699,7 @@ class vkroulette {
 
 		// вариант №1 - делаем запрос и работаем с запросом построчно в виде массива
 		$sql = 'SELECT `' . $fields . '` FROM ' . $table_name . ((empty($where)) ? '' : $where);
-		print_r('<br>'.$sql);
+		//print_r('<br>'.$sql);
 		$results = $this->modx->query($sql);
 		$new_array = array();
 		$fields_array = explode(',', $fields);
@@ -547,14 +750,14 @@ class vkroulette {
 		// запоминаем новое значение
 		$new_value = array(
 			$field => $value,
-			'signed' => false		// если надо еще и данное поле обнулить
+			//'signed' => false		// если надо еще и данное поле обнулить
 		);
 
 		/** @var modX $mmbrcl */
 		foreach ($memberscollection as $mmbrcl){
 			// изменяем нужное поле
-			$mmbrcl->set('repost',false);		// вручную указываем устанавливаемое поле и его значение
-			$mmbrcl->set('signed',false);
+			//$mmbrcl->set('repost',false);		// вручную указываем устанавливаемое поле и его значение
+			//$mmbrcl->set('signed',false);
 
 			// или можем вот так изменить
 			$mmbrcl->fromarray($new_value);		// берем имя поля и его значение из массива (можно сразу несколько значений)
@@ -562,14 +765,25 @@ class vkroulette {
 			// сохраняем элемент
 			$mmbrcl->save();
 		}
+	}
 
+	/**
+	 * Сброс таблицы участников текущего конкурса:
+	 *        а именно устанавливаем во все записи в поле 'repost' значение 'false'
+	 *
+	 * @param string $class - имя класса объекта, с которым работаем
+	 * @param string $field - имя изменяемого свойства
+	 * @param bool $value - новое значение изменяемого поля
+	 *
+	 * @return void
+	 */
+	function resetmembers_sql($class = 'vkrmembers', $field = 'repost', $value = false){
 		// ВАРИАНТ №2 - или выполним SQL-запрос через PDO
 		//		Update имя_таблица Set имя_колонки = новое_значение Where условие_отбора
 		//	Exmpl:	Update vkroulette_members Set repost = false
-		$results = $this->modx->query('Update vkroulette_members Set repost = false');
-
-		// ВАРИАНТ №3 - или выполним SQL-запрос через xPDO
-
+		$table_name = $this->modx->getTableName($class);
+		$sql = 'Update ' . $table_name .' Set ' . $field . ' = ' . $value;
+		$results = $this->modx->query($sql);
 	}
 
 	/**
@@ -613,7 +827,7 @@ class vkroulette {
 				$new_members_info = $users['response'];
 				$this->pretty_print($new_members_info,false, 'users.get');
 				$addfields = array(
-//					'signed' => 1,
+					'signed' => 1,
 //					'repost' => 0,
 //					'manager' => 0,
 				);		// в принципе эти доп поля не нужны, т.к. имеют значения по умолчанию
@@ -647,6 +861,37 @@ class vkroulette {
 //			$sql_result = $this->modx->exec($sql . '(`' . implode('`, `',$new) . '`,`https://vk.com/id'.$new['uid'] . '`)');
 //		}
 	}	// finished
+
+	/**
+	 * Изменение нужных полей в базе данных по переданному списку и массивом значений
+	 * 1) сперва получаем объекты по полученным Vk.id
+	 * 2) изменяем объекты - устанавливаем новые свойства по массиву "ключ->значение"
+	 *
+	 * @param string $class - имя класса изменяемой таблицы
+	 * @param array $change_array - массив значений Vk.id для изменения
+	 * @param array $fields - массив свойств и их нового значения
+	 *
+	 * @return void
+	 */
+	function changerecords($class = 'vkrmembers', $change_array = array(), $fields = array()){
+		// 1 получаем нужные для изменения объекты
+		// создаём запрос
+		$query = $this->modx->newQuery($class);
+		// добавляем фильтр по нашим значениям uid
+		$query->where(array('uid:IN' => $change_array));		// инструкция IN
+		// IN (условие, выбирающие записи, у которых значения поля совпадает со значением в списке)
+		// считываем значения c нашим критерием - тип критерия xPDOQuery
+		$resources = $this->modx->getCollection($class, $query);
+
+		// 2 изменяем полученные объекты
+		/** @var xPDOObject $resource */
+		foreach ($resources as $resource){
+			// изменяем переданные поля
+			$resource->fromArray($fields);		// берем имя поля и его значение из массива (можно сразу несколько значений)
+			// сохраняем текущий элемент
+			$resource->save();
+		}
+	}
 
 	/**
 	 * Функция считывает подписчиков группы и записывает их в массив $membersGroups
@@ -705,10 +950,12 @@ class vkroulette {
 	 * @param mixed $in - Массив или объект, который надо обойти
 	 * @param boolean $opened - Раскрыть дерево элементов по-умолчанию или нет?
 	 * @param string $name - отображаемое имя массива
+	 * @param bool $show - доп переменная, чтобы одним движением отключить все выводы
 	 *
 	 * @return void
 	 */
-	function pretty_print($in,$opened = true, $name = 'Array'){
+	function pretty_print($in,$opened = true, $name = 'Array', $show = false){
+		if (!$show) return;
 		if($opened)
 			$opened = ' open';
 		if(is_object($in) or is_array($in)){
@@ -747,5 +994,155 @@ class vkroulette {
 				echo '<div style="margin-left:'.$margin.'px">'.$key . ' : <span style="color:'.$bgc.'">' . $value .'</span> ('.gettype($value).')</div>';
 			}
 		}
+	}
+
+	/**
+	 * Выводит массив в виде таблицы
+	 *
+	 * @param array $in - Массив , который надо обойти
+	 * @param boolean $numbers - выводить порядковые номера
+	 * @param string $fields - список конкретных свойств массива для вывода, через запятую
+	 * @param string $head - имена выводимых колонок, через запятую
+	 * 		(количество и последовательность колонок должны совпадать с параметром $fields)
+	 *
+	 * @return string
+	 */
+	function array_as_table($in, $numbers = false, $fields = '', $head = ''){
+//		$rows = count($in); 			// количество элементов в массиве - строки нашей таблицы, тэг tr
+//		if ($rows == 0) return '';		// ничего не выводим
+//		$cols = count($in[0]); 			// количество столбцов, тэг td
+//
+//		$table = '<table border="1">';
+//
+//		for ($tr=0; $tr<$rows; $tr++){
+//			// начинаем строку
+//			$table .= '<tr>';
+//			if ($cols > 0)
+//				for ($td=0; $td<$cols; $td++)
+//					$table .= '<td>'. $in[$tr][$td] .'</td>';		// выводим столбцы - свойства/поля текущешл элемента массива
+//			else
+//				$table .= '<td>'. $in[$tr] .'</td>';				// выводим сам элемент
+//				// не работает, потому что обращаться к массиву нужно не по индексу
+//			$table .= '</tr>';
+//		}
+//
+//		$table .= '</table>';
+//		echo $table; // сделали эхо всего 1 раз
+
+		if (count($in) == 0) return '';
+
+		// преобразуем полученные переменные в массивы
+		$fields_array = explode(',', $fields);
+		$head_array = explode(',', $head);
+		// получим первый элемент массива для анализа всего массива
+		foreach ($in as $index => $value) break;
+
+		// объявляем таблицу
+		$table = '<table border="1" cellspacing="1" cellpadding="1" align="center">';
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+		// если передан заголовок таблицы - выводим его
+		$table .= '<thead>';
+		// начинаем строку заголовка
+		$table .= '<tr>';
+
+		// нужно вывести колонку индекса/номера по порялку
+		if (!is_array($value))
+			// если массив одномерный, то надо определиться как будем выводить значения
+			if (count($head_array) > 0) {
+				if ($numbers) $table .= '<th>№ п/п</th>';
+				// если передан заголовок таблицы, то выводим значения в одну строчку без индекса
+				foreach ($head_array as $head_field)
+					$table .= '<th>' . $head_field . '</th>';                // выводим столбики заголовков
+			}
+			else {
+				// иначе выводим в столбик с индексом
+				if ($numbers) $table .= '<th>Индекс</th>';
+				$table .= '<th>Значение</th>';
+			}
+		else {
+			// нужно выводить табличкой с индексом
+			if ($numbers) $table .= '<th>№ п/п</th>';
+			if (count($head_array) > 0) {
+				foreach ($head_array as $head_field)
+					$table .= '<th>' . $head_field . '</th>';                // выводим столбики заголовков
+			}
+			elseif (count($fields_array) > 0) {
+				foreach ($fields_array as $head_field)
+					$table .= '<th>' . $head_field . '</th>';                // выводим столбики по фильтру
+			}
+			else {
+				foreach ($value as $index => $head_field)
+					$table .= '<th>' . $index . '</th>';                	// выводим столбики по индексам
+			}
+		}
+		// заканчиваем строку заголовка
+		$table .= '</tr>';
+		$table .= '</thead>';
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		// выводим тело таблицы
+		$table .= '<tbody>';
+		$Nnn = 1;
+		if (!is_array($value)) {
+			// массив одномерный
+			if (count($head_array) > 0) {
+				// если передан заголовок таблицы, то выводим значения в одну строчку
+				// начинаем строку
+				$table .= '<tr>';
+				// выводим индекс
+				if ($numbers) $table .= '<td>' . $Nnn . '</td>';
+				if (count($fields_array) > 0)
+					// если указан фильтр по полям, выводим по фильтру
+					foreach ($fields_array as $field)
+						$table .= '<td>' . $in[$field] . '</td>';
+				else
+					// иначе выводим все поля
+					foreach ($in as $index => $value)
+						$table .= '<td>' . $value . '</td>';
+				// заканчиваем строку заголовка
+				$table .= '</tr>';
+			}
+			else {
+				// иначе выводим в столбик
+				foreach ($in as $index => $value){
+					$table .= '<tr>';
+					if ($numbers) $table .= '<td>' . $index . '</td>';
+					$table .= '<td>' . $value . '</td>';
+					$table .= '</tr>';
+				}
+			}
+		}
+		else {
+			// нужно выводить табличкой с индексом
+			$check = '<img src="/assets/templates/itray/img/check_itray.png" height="20" width="25">';
+			foreach ($in as $index => $value) {
+				// начинаем строчку
+				$table .= '<tr>';
+				// выводим индекс
+				if ($numbers) $table .= '<td>' . $Nnn . '</td>';
+				$Nnn += 1;
+				// выводим значения по фильтру, если указан
+				if (count($fields_array)>0)
+					foreach ($fields_array as $field)
+						//$table .= '<td>' . $value[$field] . '</td>';                	// выводим значения по списку полей
+						if ($field == 'repost') $table .= '<td>' . (($value[$field] == '1') ? $check : '') . '</td>';
+						else $table .= '<td>' . $value[$field] . '</td>';
+				else
+					foreach ($value as $ind => $field)
+						//$table .= '<td>' . $field . '</td>';                	// выводим все значения
+						if ($ind == 'repost') $table .= '<td>' . (($field == '1') ? 'красивая галочка' : '') . '</td>';
+						else $table .= '<td>' . $field . '</td>';
+				// заканчиваем строчку
+				$table .= '</tr>';
+			}
+		}
+
+		// заканчиваем таблицу и выводим
+		$table .= '</tbody>';
+		$table .= '</table>';
+		//echo $table; // сделали эхо всего 1 раз
+		return $table;
 	}
 }

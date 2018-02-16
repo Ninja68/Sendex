@@ -2,11 +2,11 @@
 /**
  * Get a list of Items
  */
-class vkrmembersGetListProcessor extends modObjectGetListProcessor {
-	public $objectType = 'vkrmembers';
-	public $classKey = 'vkrmembers';
+class vkrwinnersGetListProcessor extends modObjectGetListProcessor {
+	public $objectType = 'vkrwinners';
+	public $classKey = 'vkrwinners';
 	public $defaultSortField = 'id';
-	public $defaultSortDirection = 'ASC';
+	public $defaultSortDirection = 'DESC';
 	public $renderers = '';
 
 
@@ -33,4 +33,4 @@ class vkrmembersGetListProcessor extends modObjectGetListProcessor {
 
 }
 
-return 'vkrmembersGetListProcessor';
+return 'vkrwinnersGetListProcessor';

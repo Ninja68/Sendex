@@ -6,24 +6,33 @@ vkroulette.grid.members = function(config) {
 		,baseParams: {
 			action: 'mgr/member/getlist'
 		}
-		,fields: ['id','uid','first_name','last_name','screen_name','photo','link','signed','repost']
+		,fields: ['id','uid','first_name','last_name','screen_name','photo','link','signed','repost','manager']
 		,autoHeight: true
 		,paging: true
 		,remoteSort: true
 		,columns: [
-			{header: _('id'),dataIndex: 'id',width: 70}
+			{header: _('id'),dataIndex: 'id',width: 50}
 			,{header: _('vkroulette_member_uid'),dataIndex: 'uid',width: 70}
 			,{header: _('vkroulette_member_first_name'),dataIndex: 'first_name',width: 150}
-            ,{header: _('vkroulette_member_last_name'),dataIndex: 'last_name',width: 150}
-            //,{header: _('vkroulette_member_screen_name'),dataIndex: 'screen_name',width: 100}
-            ,{header: _('vkroulette_member_photo'),dataIndex: 'photo',width: 100, renderer: this.renderImage}
-            //,{header: _('vkroulette_member_link'),dataIndex: 'link',width: 100}
-            ,{header: _('vkroulette_member_signed'),dataIndex: 'signed',width: 50, renderer: this.renderBoolean}
-            ,{header: _('vkroulette_member_repost'),dataIndex: 'repost',width: 50, renderer: this.renderBoolean}
+			,{header: _('vkroulette_member_last_name'),dataIndex: 'last_name',width: 150}
+			//,{header: _('vkroulette_member_screen_name'),dataIndex: 'screen_name',width: 100}
+			,{header: _('vkroulette_member_photo'),dataIndex: 'photo',width: 60, renderer: this.renderImage}
+			//,{header: _('vkroulette_member_link'),dataIndex: 'link',width: 100}
+			,{header: _('vkroulette_member_signed'),dataIndex: 'signed',width: 50, renderer: this.renderBoolean}
+			,{header: _('vkroulette_member_repost'),dataIndex: 'repost',width: 50, renderer: this.renderBoolean}
+			,{header: _('vkroulette_member_manager'),dataIndex: 'manager',width: 50, renderer: this.renderBoolean}
 		]
 		,tbar: [{
 			text: _('vkroulette_btn_create')
 			,handler: this.CreateMember
+			,scope: this
+		},{
+			text: _('vkroulette_btn_updatelist')
+			,handler: this.UpdateList
+			,scope: this
+		},{
+			text: _('vkroulette_btn_rewritelist')
+			,handler: this.ReWriteList
 			,scope: this
 		}]
 		,listeners: {
@@ -51,7 +60,7 @@ Ext.extend(vkroulette.grid.members,MODx.grid.Grid,{
 		});
 		this.addContextMenuItem(m);
 	}
-	
+
 	,CreateMember: function(btn,e) {
 		if (!this.windows.CreateMember) {
 			this.windows.CreateMember = MODx.load({
@@ -94,9 +103,43 @@ Ext.extend(vkroulette.grid.members,MODx.grid.Grid,{
 		});
 	}
 
+	,UpdateList: function(btn,e) {
+		// спросим подтверждение нужного действия
+		MODx.msg.confirm({
+			title: _('vkroulette_member_updatelist')
+			,text: _('vkroulette_member_updatelist_confirm')
+			,url: this.config.url
+			,params: {
+				action: 'mgr/member/updatelist'
+				//,id: this.menu.record.id
+			}
+			,listeners: {
+				'success': {fn:function(r) { this.refresh(); },scope:this}
+			}
+		});
+
+	}
+
+	,ReWriteList: function(btn,e) {
+		// спросим подтверждение нужного действия
+		MODx.msg.confirm({
+			title: _('vkroulette_member_rewritelist')
+			,text: _('vkroulette_member_rewritelist_confirm')
+			,url: this.config.url
+			,params: {
+				action: 'mgr/member/rewritelist'
+				//,id: this.menu.record.id
+			}
+			,listeners: {
+				'success': {fn:function(r) { this.refresh(); },scope:this}
+			}
+		});
+
+	}
+
 	,removeItem: function(btn,e) {
 		if (!this.menu.record) return false;
-		
+
 		MODx.msg.confirm({
 			title: _('vkroulette_member_remove')
 			,text: _('vkroulette_member_remove_confirm')
@@ -111,17 +154,17 @@ Ext.extend(vkroulette.grid.members,MODx.grid.Grid,{
 		});
 	}
 
-    ,renderBoolean: function(val,cell,row) {
-        return val == '' || val == 0
-            ? '<span style="color:red">' + _('no') + '<span>'
-            : '<span style="color:green">' + _('yes') + '<span>';
-    }
+	,renderBoolean: function(val,cell,row) {
+		return val == '' || val == 0
+			? '<span style="color:red">' + _('no') + '<span>'
+			: '<span style="color:green">' + _('yes') + '<span>';
+	}
 
-    ,renderImage: function(val,cell,row) {
-        return val != ''
-            ? '<img src="' + val + '" alt="" height="50" />'
-            : '';
-    }
+	,renderImage: function(val,cell,row) {
+		return val != ''
+			? '<img src="' + val + '" alt="" height="50" />'
+			: '';
+	}
 });
 Ext.reg('vkroulette-grid-members',vkroulette.grid.members);
 
@@ -150,30 +193,30 @@ vkroulette.window.CreateMember = function(config) {
 			//,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
 			//,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
 			,{
-                layout:'column'
-                ,border: false
-                ,anchor: '100%'
-                ,items: [{
+				layout:'column'
+				,border: false
+				,anchor: '100%'
+				,items: [{
 					columnWidth: .5
 					,layout: 'form'
 					,defaults: { msgTarget: 'under' }
 					,border:false
 					,items: [
-                        {xtype: 'textfield',fieldLabel: _('vkroulette_member_screen_name'),name: 'screen_name',id: 'vkroulette-'+this.ident+'-screen_name',anchor: '99%'}
-                        ,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
+						{xtype: 'textfield',fieldLabel: _('vkroulette_member_screen_name'),name: 'screen_name',id: 'vkroulette-'+this.ident+'-screen_name',anchor: '99%'}
+						,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
 					]
-					},{
-                    columnWidth: .5
-                    ,layout: 'form'
-                    ,defaults: { msgTarget: 'under' }
-                    ,border:false
-                    ,items: [
-                        {xtype: 'textfield',fieldLabel: _('vkroulette_member_link'),name: 'link',id: 'vkroulette-'+this.ident+'-link',anchor: '99%'}
-                        ,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
-                    ]
+				},{
+					columnWidth: .5
+					,layout: 'form'
+					,defaults: { msgTarget: 'under' }
+					,border:false
+					,items: [
+						{xtype: 'textfield',fieldLabel: _('vkroulette_member_link'),name: 'link',id: 'vkroulette-'+this.ident+'-link',anchor: '99%'}
+						,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
+					]
 				}]
 			}
-        ]
+		]
 		,keys: [{key: Ext.EventObject.ENTER,shift: true,fn: function() {this.submit() },scope: this}]
 	});
 	vkroulette.window.CreateMember.superclass.constructor.call(this,config);
@@ -193,40 +236,40 @@ vkroulette.window.UpdateMember = function(config) {
 		,url: vkroulette.config.connector_url
 		,action: 'mgr/member/update'
 		,fields: [
-            {xtype: 'numberfield',fieldLabel: _('vkroulette_member_uid'),name: 'uid',id: 'vkroulette-'+this.ident+'-uid',anchor: '99%'}
-            ,{xtype: 'textfield',fieldLabel: _('vkroulette_member_first_name'),name: 'first_name',id: 'vkroulette-'+this.ident+'-first_name',anchor: '99%'}
-            ,{xtype: 'textfield',fieldLabel: _('vkroulette_member_last_name'),name: 'last_name',id: 'vkroulette-'+this.ident+'-last_name',anchor: '99%'}
+			{xtype: 'numberfield',fieldLabel: _('vkroulette_member_uid'),name: 'uid',id: 'vkroulette-'+this.ident+'-uid',anchor: '99%'}
+			,{xtype: 'textfield',fieldLabel: _('vkroulette_member_first_name'),name: 'first_name',id: 'vkroulette-'+this.ident+'-first_name',anchor: '99%'}
+			,{xtype: 'textfield',fieldLabel: _('vkroulette_member_last_name'),name: 'last_name',id: 'vkroulette-'+this.ident+'-last_name',anchor: '99%'}
 
-            //,{xtype: 'textfield',fieldLabel: _('vkroulette_member_screen_name'),name: 'screen_name',id: 'vkroulette-'+this.ident+'-screen_name',anchor: '99%'}
-            ,{xtype: 'textfield',fieldLabel: _('vkroulette_member_photo'),name: 'photo',id: 'vkroulette-'+this.ident+'-photo',anchor: '99%'}
-            //,{xtype: 'textfield',fieldLabel: _('vkroulette_member_link'),name: 'link',id: 'vkroulette-'+this.ident+'-link',anchor: '99%'}
+			//,{xtype: 'textfield',fieldLabel: _('vkroulette_member_screen_name'),name: 'screen_name',id: 'vkroulette-'+this.ident+'-screen_name',anchor: '99%'}
+			,{xtype: 'textfield',fieldLabel: _('vkroulette_member_photo'),name: 'photo',id: 'vkroulette-'+this.ident+'-photo',anchor: '99%'}
+			//,{xtype: 'textfield',fieldLabel: _('vkroulette_member_link'),name: 'link',id: 'vkroulette-'+this.ident+'-link',anchor: '99%'}
 
-            //,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
-            //,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
-            ,{
-                layout:'column'
-                ,border: false
-                ,anchor: '100%'
-                ,items: [{
-                    columnWidth: .5
-                    ,layout: 'form'
-                    ,defaults: { msgTarget: 'under' }
-                    ,border:false
-                    ,items: [
-                        {xtype: 'textfield',fieldLabel: _('vkroulette_member_screen_name'),name: 'screen_name',id: 'vkroulette-'+this.ident+'-screen_name',anchor: '99%'}
-                        ,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
-                    ]
-                },{
-                    columnWidth: .5
-                    ,layout: 'form'
-                    ,defaults: { msgTarget: 'under' }
-                    ,border:false
-                    ,items: [
-                        {xtype: 'textfield',fieldLabel: _('vkroulette_member_link'),name: 'link',id: 'vkroulette-'+this.ident+'-link',anchor: '99%'}
-                        ,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
-                    ]
-                }]
-            }
+			//,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
+			//,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
+			,{
+				layout:'column'
+				,border: false
+				,anchor: '100%'
+				,items: [{
+					columnWidth: .5
+					,layout: 'form'
+					,defaults: { msgTarget: 'under' }
+					,border:false
+					,items: [
+						{xtype: 'textfield',fieldLabel: _('vkroulette_member_screen_name'),name: 'screen_name',id: 'vkroulette-'+this.ident+'-screen_name',anchor: '99%'}
+						,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_signed'),name: 'signed',hiddenName: 'signed',id: 'vkroulette-'+this.ident+'-signed',anchor: '40%'}
+					]
+				},{
+					columnWidth: .5
+					,layout: 'form'
+					,defaults: { msgTarget: 'under' }
+					,border:false
+					,items: [
+						{xtype: 'textfield',fieldLabel: _('vkroulette_member_link'),name: 'link',id: 'vkroulette-'+this.ident+'-link',anchor: '99%'}
+						,{xtype: 'combo-boolean',fieldLabel: _('vkroulette_member_repost'),name: 'repost',hiddenName: 'repost',id: 'vkroulette-'+this.ident+'-repost',anchor: '40%'}
+					]
+				}]
+			}
 		]
 		,keys: [{key: Ext.EventObject.ENTER,shift: true,fn: function() {this.submit() },scope: this}]
 	});

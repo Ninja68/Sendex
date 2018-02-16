@@ -2,9 +2,9 @@
 /**
  * Create an Item
  */
-class vkrmembersCreateProcessor extends modObjectCreateProcessor {
-	public $objectType = 'vkrmembers';
-	public $classKey = 'vkrmembers';
+class vkrwinnersCreateProcessor extends modObjectCreateProcessor {
+	public $objectType = 'vkrwinners';
+	public $classKey = 'vkrwinners';
 	public $languageTopics = array('vkroulette');
 	public $permission = 'new_document';
 
@@ -13,8 +13,8 @@ class vkrmembersCreateProcessor extends modObjectCreateProcessor {
 	 * @return bool
 	 */
 	public function beforeSet() {
-		$this->modx->log(3, 'Меня запустили -> vkrmembersCreateProcessor');
-		$alreadyExists = $this->modx->getObject('vkrmembers', array(
+		$this->modx->log(3, 'Меня запустили -> vkrwCreateProc');
+		$alreadyExists = $this->modx->getObject('vkrwinners', array(
 			'id' => $this->getProperty('id'),
 		));
 		if ($alreadyExists) {
@@ -26,4 +26,4 @@ class vkrmembersCreateProcessor extends modObjectCreateProcessor {
 
 }
 
-return 'vkrmembersCreateProcessor';
+return 'vkrwinnersCreateProcessor';
