@@ -14,6 +14,10 @@ if (!($vkroulette instanceof vkroulette)) {
 }
 $modx->log(1, 'INFO: Была запущена задача планировщика -> findwinner.php');
 
+// обновляем таблицу участников и репосты перед самим розыгрышем
+$vkroulette->updatemembers();
+$vkroulette->updatemembersreposts();
+
 // определяем нового победителя
 $vkroulette->findwinner();
 

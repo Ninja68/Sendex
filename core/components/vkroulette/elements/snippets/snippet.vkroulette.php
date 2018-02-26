@@ -64,7 +64,7 @@ $tpl_table_winners .= '<tbody>';
 $i = 0;
 foreach ($winners as $winner) {
 	$i += 1;
-	$name = '<a href="'.$winner['link'].' target="_blank"">' . $winner['first_name'].' '.$winner['last_name'] . '</a>';
+	$name = '<a href="'.$winner['link'].'" target="_blank">' . $winner['first_name'].' '.$winner['last_name'] . '</a>';
 	$tpl_table_winners .= '<tr><td>'. $i .'</td><td>'. $winner['uid'] .'</td><td>'. $name .'</td><td>'. $winner['data'] .'</td><td>'. $winner['summa'] .'</td></tr>';
 }
 $tpl_table_winners .= '</tbody></table>';
@@ -88,18 +88,52 @@ $check = '<img src="/assets/templates/itray/img/check_itray.png" height="20" wid
 $i = 0;
 foreach ($players as $player) {
 	$i += 1;
-	$name = '<a href="'.$player['link'].' target="_blank"">' . $player['first_name'].' '.$player['last_name'] . '</a>';
+	$name = '<a href="'.$player['link'].'" target="_blank">' . $player['first_name'].' '.$player['last_name'] . '</a>';
 	$tpl_table_players2 .= '<tr><td>'. $i .'</td><td>'. $player['uid'] .'</td><td>'. $name .'</td><td>'. (($player['repost'] == '1') ? $check : '') .'</td></tr>';
 }
 $tpl_table_players2 .= '</tbody></table>';
 
+// считываем отписавшихся людей
+//$fields = 'uid,first_name,last_name,repost';						// считываемые поля
+$head_fields = 'id,Имя,Фамилия,Увеличенный шанс (репост)';			// выводимые заголовки
+$where = array(
+	'signed' => false,
+);
+$players_old = $vkroulette->readrecords('vkrmembers', '', $where);
+//$tpl_table_players = $vkroulette->array_as_table($players,true, $fields, $head_fields);
+
+if (count($players_old) > 0){
+	// сформируем выводимую таблицу выручную
+	$tpl_table_players3 = '<p>Не принимают участие в конкурсе (отписавшиеся)</p>';
+	$tpl_table_players3 .= '<table border="1" cellspacing="1" cellpadding="1" align="center">';
+	$tpl_table_players3 .= '<thead><tr align="center"><th>№ п/п</th><th>id</th><th>Имя</th><th>Репост</th></tr></thead>';
+	$tpl_table_players3 .= '<tbody>';
+	$i = 0;
+	foreach ($players_old as $player) {
+		$i += 1;
+		$name = '<a href="'.$player['link'].'" target="_blank">' . $player['first_name'].' '.$player['last_name'] . '</a>';
+		$tpl_table_players3 .= '<tr><td>'. $i .'</td><td>'. $player['uid'] .'</td><td>'. $name .'</td><td>'. (($player['repost'] == '1') ? $check : '') .'</td></tr>';
+	}
+	$tpl_table_players3 .= '</tbody></table>';
+	$tpl_table_players2 .= $tpl_table_players3;
+}
+
 /** @var array $placeholders */
 $placeholders = array();
 // вкладка победители
-$placeholders['winner_name'] = $lastwinner['first_name'] . ' ' . $lastwinner['last_name'];
-$placeholders['winner_link'] = $lastwinner['link'];
-$placeholders['winner_photo'] = $lastwinner['photo'];
-$placeholders['table_winners'] = $tpl_table_winners;
+if (count($lastwinner) > 0) {
+	//$placeholders['winner_name'] = $lastwinner['first_name'] . ' ' . $lastwinner['last_name'];
+	//$placeholders['winner_link'] = $lastwinner['link'];
+	$placeholders['winner_link'] = '<a href="'.$lastwinner['link'].'" target="_blank">'.$lastwinner['first_name'] . ' ' . $lastwinner['last_name'].'</a>';
+	//$placeholders['winner_photo'] = $lastwinner['photo'];
+	$placeholders['winner_photo'] = '<a href="'.$lastwinner['link'].'" target="_blank"><img src="'.$lastwinner['photo'].'" alt="Победитель"></a>';
+	$placeholders['table_winners'] = $tpl_table_winners;
+}
+else {
+	$placeholders['winner_link'] = 'еще не определен';
+	$placeholders['winner_photo'] = '<img src="/assets/templates/itray/img/WinCup1000.png" height="219" width="234">';
+	$placeholders['table_winners'] = 'Победителей еще не было, испытай свою удачу!';
+}
 //$placeholders['table_win'] = $tpl_table_winner;
 
 // вкладка текущий розыгрыш

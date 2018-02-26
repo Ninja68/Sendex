@@ -15,19 +15,18 @@
                     <div class="shortcode_tab_item_body tab-content clearfix body1 it1 active" style="display: block;">
                         <div class="ip">
                             <div class="tab_content">
-                                <p>На халяву и уксус сладкий ... а тут вам не какой-то уксус, а настоящие деньги!</p>
-                                <p>Прими участие в розыгрыше, вдруг удача улыбнётся именно ТЕБЕ !!!</p>
-                                <p>P.S.: ты можешь повысить свои шансы на победу - подробности смотри в группе Вконтакте.</p>
+                                <div>Через:</div>
                                 <div class="my-clock" style="margin:2em;" align="center"></div>
                                 <div class="message" align="center"></div>
+                                <div>будет определён победитель конкурса, который получит 1000 рублей.</div>
                             </div>
                         </div>
                     </div>
                     <div class="shortcode_tab_item_body tab-content clearfix body2 it2" style="display: none;">
                         <div class="ip">
                             <div class="tab_content">
-                                <p>Последний победитель: <a href="[[+winner_link]] target="_blank"">[[+winner_name]]</a></p>
-                                <p><a href="[[+winner_link]] target="_blank""><img src="[[+winner_photo]]" alt="Победитель"></a></p>
+                                <p>Последний победитель: [[+winner_link]]</p>
+                                <p>[[+winner_photo]]</p>
                                 <p>Все выигрыши</p>
                                 <p>[[+table_winners]]</p>
                             </div>

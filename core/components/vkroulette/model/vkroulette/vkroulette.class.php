@@ -222,7 +222,7 @@ class vkroulette {
 		foreach ($players as $player) {
 			// определяем был ли репост
 			if ($player['repost'] == true) {
-				$range += 150;
+				$range += 200;
 				$mmbrsrepost += 1;
 			}
 			else
@@ -574,7 +574,10 @@ class vkroulette {
 
 		// 2 получаем список участников из базы данных
 		$fields = 'uid';		// считываемые поля через запятую
-		$members_db = $this->readrecords($class, $fields);
+		$members_db = $this->readrecords($class, $fields);				// все участники
+		$members_db_old = $this->readrecords($class, $fields, array('signed'=> false));		// отписавшиеся
+
+		//print_r($members_db_old);die;
 		//$members_mysql = $this->readrecords_sql($class, $fields);
 
 		// 3 определяем разхождения в участниках
@@ -582,15 +585,25 @@ class vkroulette {
 		$members_new = array_diff($membersGroups,$members_db);
 		// участники сообщества, которые отписались от нашей группы (есть в ДБ, нет в ВК)
 		$members_old = array_diff($members_db,$membersGroups);
-		$this->pretty_print($members_new, false,'members_new');
-		$this->pretty_print($members_old, false,'members_old');
+		// перепроверим всех отписавшихся ранее участников, вдруг они снова подписались
+		$remembers =  array_intersect($members_db_old, $membersGroups);
+
+		$this->pretty_print($members_new, false,'members_new');	// новые
+		$this->pretty_print($members_old, false,'members_old');	// отписавшиеся
+		$this->pretty_print($remembers, false,'$remembers');		// переподписавшиеся
 
 		// 4 добавляем всех пользователей в базу данных
-		$this->addmembers($members_new,$class);
+		if (count($members_new) > 0)
+			$this->addmembers($members_new,$class);
 
 		// 5 изменяем отписавшихся
 		$change_fields = array('signed' => false);
-		$this->changerecords($class, $members_old, $change_fields);
+		if (count($members_old) > 0)
+			$this->changerecords($class, $members_old, $change_fields);
+
+		// 6 переподписываем старых, елси они снова подписались
+		if (count($remembers) > 0)
+			$this->changerecords($class = 'vkrmembers', $remembers, $fields = array('signed'=>true));
 	}
 
 	/**
@@ -637,7 +650,19 @@ class vkroulette {
 			}
 		}
 
-		// 2 обновляем список
+		// 1.2 получаем список участников из базы данных
+		$fields = 'uid';		// считываемые поля через запятую
+		$members_db = $this->readrecords($class, $fields);				// все текущие участники
+		// 1.3 получаем список людей, отсутствующих в базе, но сделавших репост
+		$not_members = array_diff($likes_users,$members_db);
+		if (count($not_members) > 0){
+			// 1.4 добавляем таких людей в БД
+			$this->addmembers($not_members,$class);
+			// 1.5 меняем им статус - т.к. они не подписаны
+			$this->changerecords($class, $not_members, array('signed' => false));
+		}
+
+		// 2 обновляем список репостов в базе
 		$change_fields = array('repost' => true);
 		// сбрасываем текущие значения репостов
 		//$this->resetmembers_sql();
